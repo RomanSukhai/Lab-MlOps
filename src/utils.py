@@ -3,7 +3,7 @@ import seaborn as sns
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
 
 
-def evaluate_model(model, X_test, y_test):
+def evaluate_model(model, X_test, y_test, output_path):
 
     y_pred = model.predict(X_test)
 
@@ -14,11 +14,8 @@ def evaluate_model(model, X_test, y_test):
 
     plt.figure(figsize=(6, 4))
     sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
-    plt.title("Confusion Matrix")
-    plt.xlabel("Predicted")
-    plt.ylabel("Actual")
     plt.tight_layout()
-    plt.savefig("confusion_matrix.png")
+    plt.savefig(output_path)
     plt.close()
 
     return accuracy, f1

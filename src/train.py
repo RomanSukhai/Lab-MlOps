@@ -1,4 +1,5 @@
 import argparse
+import os
 import mlflow
 import mlflow.sklearn
 import matplotlib.pyplot as plt
@@ -8,13 +9,15 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
 
-from data import load_data
-from preprocessing import preprocess_data
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train RandomForest model")
 
+    # DVC arguments
+    parser.add_argument("input_dir", type=str)     # data/prepared
+    parser.add_argument("output_dir", type=str)    # data/models
+
+    # Model params
     parser.add_argument("--n_estimators", type=int, default=100)
     parser.add_argument("--max_depth", type=int, default=None)
     parser.add_argument("--experiment_name", type=str, default="Telco_Churn_Experiment")
@@ -23,45 +26,66 @@ def parse_args():
     return parser.parse_args()
 
 
-def plot_confusion_matrix(y_true, y_pred):
-    cm = confusion_matrix(y_true, y_pred)
+def evaluate_model(model, X_test, y_test, output_dir):
+    y_pred = model.predict(X_test)
+
+    accuracy = accuracy_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
+
+    cm = confusion_matrix(y_test, y_pred)
+
+    cm_path = os.path.join(output_dir, "confusion_matrix.png")
 
     plt.figure(figsize=(6, 4))
     sns.heatmap(cm, annot=True, fmt="d", cmap="Blues")
     plt.title("Confusion Matrix")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
     plt.tight_layout()
-    plt.savefig("confusion_matrix.png")
+    plt.savefig(cm_path)
     plt.close()
 
+    return accuracy, f1, cm_path
 
-def plot_feature_importance(model, feature_names):
+
+def plot_feature_importance(model, feature_names, output_dir):
     importances = model.feature_importances_
-    indices = importances.argsort()[-15:]  # топ 15
+    indices = importances.argsort()[-15:]
+
+    fi_path = os.path.join(output_dir, "feature_importance.png")
 
     plt.figure(figsize=(8, 6))
     plt.barh(range(len(indices)), importances[indices])
     plt.yticks(range(len(indices)), [feature_names[i] for i in indices])
     plt.title("Feature Importance (Top 15)")
     plt.tight_layout()
-    plt.savefig("feature_importance.png")
+    plt.savefig(fi_path)
     plt.close()
+
+    return fi_path
 
 
 def train():
-
     args = parse_args()
 
-    df = load_data("WA_Fn-UseC_-Telco-Customer-Churn.csv")
-    X_train, X_test, y_train, y_test = preprocess_data(df)
+    os.makedirs(args.output_dir, exist_ok=True)
+
+    # 🔹 Читаємо підготовлені дані
+    train_df = pd.read_csv(os.path.join(args.input_dir, "train.csv"))
+    test_df = pd.read_csv(os.path.join(args.input_dir, "test.csv"))
+
+    X_train = train_df.drop("Churn", axis=1)
+    y_train = train_df["Churn"]
+
+    X_test = test_df.drop("Churn", axis=1)
+    y_test = test_df["Churn"]
 
     mlflow.set_experiment(args.experiment_name)
 
     with mlflow.start_run():
 
-        # ===== TAGS =====
         mlflow.set_tag("author", args.author)
         mlflow.set_tag("model_type", "RandomForest")
-        mlflow.set_tag("dataset_version", "v1")
 
         model = RandomForestClassifier(
             n_estimators=args.n_estimators,
@@ -71,14 +95,27 @@ def train():
 
         model.fit(X_train, y_train)
 
+        # ===== TRAIN METRICS =====
         y_train_pred = model.predict(X_train)
         train_acc = accuracy_score(y_train, y_train_pred)
         train_f1 = f1_score(y_train, y_train_pred)
 
-        y_test_pred = model.predict(X_test)
-        test_acc = accuracy_score(y_test, y_test_pred)
-        test_f1 = f1_score(y_test, y_test_pred)
+        # ===== TEST METRICS + CONF MATRIX =====
+        test_acc, test_f1, cm_path = evaluate_model(
+            model,
+            X_test,
+            y_test,
+            args.output_dir
+        )
 
+        # ===== FEATURE IMPORTANCE =====
+        fi_path = plot_feature_importance(
+            model,
+            X_train.columns,
+            args.output_dir
+        )
+
+        # ===== LOGGING =====
         mlflow.log_param("n_estimators", args.n_estimators)
         mlflow.log_param("max_depth", args.max_depth)
 
@@ -89,11 +126,8 @@ def train():
 
         mlflow.sklearn.log_model(model, "model")
 
-        plot_confusion_matrix(y_test, y_test_pred)
-        plot_feature_importance(model, X_train.columns)
-
-        mlflow.log_artifact("confusion_matrix.png")
-        mlflow.log_artifact("feature_importance.png")
+        mlflow.log_artifact(cm_path)
+        mlflow.log_artifact(fi_path)
 
         print("Training finished.")
         print(f"Train Accuracy: {train_acc:.3f}")

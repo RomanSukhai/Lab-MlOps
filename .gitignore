@@ -2,8 +2,10 @@ __pycache__/
 *.py[cod]
 venv/
 .env
-data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
-models/
-.ipynb_checkpoints
+
+data/
+
 mlruns/
+
+.ipynb_checkpoints/
 .trash/
