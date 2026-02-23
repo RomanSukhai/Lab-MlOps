@@ -8,7 +8,7 @@ import pandas as pd
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
-
+import joblib
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train RandomForest model")
@@ -18,8 +18,8 @@ def parse_args():
     parser.add_argument("output_dir", type=str)    # data/models
 
     # Model params
-    parser.add_argument("--n_estimators", type=int, default=100)
-    parser.add_argument("--max_depth", type=int, default=None)
+    parser.add_argument("--n_estimators", type=int, default=200)
+    parser.add_argument("--max_depth", type=int, default=6)
     parser.add_argument("--experiment_name", type=str, default="Telco_Churn_Experiment")
     parser.add_argument("--author", type=str, default="Roman")
 
@@ -94,7 +94,8 @@ def train():
         )
 
         model.fit(X_train, y_train)
-
+        model_path = os.path.join(args.output_dir, "model.pkl")
+        joblib.dump(model, model_path)
         # ===== TRAIN METRICS =====
         y_train_pred = model.predict(X_train)
         train_acc = accuracy_score(y_train, y_train_pred)
