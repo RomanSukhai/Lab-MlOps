@@ -1,7 +1,7 @@
 schema: '2.0'
 stages:
   prepare:
-    cmd: python src/preprocessing.py 
+    cmd: ./venv/bin/python src/preprocessing.py 
       data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv data/prepared
     deps:
     - path: data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
@@ -19,7 +19,7 @@ stages:
       size: 1176265
       nfiles: 2
   train:
-    cmd: python src/train.py data/prepared data/models
+    cmd: ./venv/bin/python src/train.py data/prepared data/models
     deps:
     - path: data/prepared
       hash: md5
@@ -36,3 +36,21 @@ stages:
       md5: 6ca4fe30f363434519e398f9c3778831.dir
       size: 1899945
       nfiles: 3
+  optimize:
+    cmd: ./venv/bin/python src/optimize.py
+    deps:
+    - path: data/prepared
+      hash: md5
+      md5: f00f608ce692966d7030ce0322ae7c9c.dir
+      size: 1176265
+      nfiles: 2
+    - path: src/optimize.py
+      hash: md5
+      md5: f0b9a797ce97539b9bc46e4b664a1df3
+      size: 2130
+    outs:
+    - path: models
+      hash: md5
+      md5: f50d991d180d8668ee7d9e8d5632fac2.dir
+      size: 10800025
+      nfiles: 1

@@ -9,3 +9,4 @@ mlruns/
 
 .ipynb_checkpoints/
 .trash/
+/models
