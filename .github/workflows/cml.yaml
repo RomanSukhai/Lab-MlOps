@@ -49,53 +49,13 @@ jobs:
         run: |
           pytest -q
 
-      - name: Create baseline comparison
-        if: github.event_name == 'pull_request'
-        run: |
-          python - <<'PY'
-          import json
-          import os
-
-          current = {}
-          baseline = {}
-
-          if os.path.exists("metrics.json"):
-              with open("metrics.json", "r", encoding="utf-8") as f:
-                  current = json.load(f)
-
-          if os.path.exists("baseline/metrics.json"):
-              with open("baseline/metrics.json", "r", encoding="utf-8") as f:
-                  baseline = json.load(f)
-
-          lines = []
-          lines.append("## Baseline comparison")
-          lines.append("")
-          lines.append("| Metric | Baseline | Current | Delta |")
-          lines.append("|---|---:|---:|---:|")
-
-          keys = sorted(set(current.keys()) | set(baseline.keys()))
-          for key in keys:
-              b = baseline.get(key)
-              c = current.get(key)
-              if b is None:
-                  lines.append(f"| {key} | - | {c:.4f} | - |")
-              elif c is None:
-                  lines.append(f"| {key} | {b:.4f} | - | - |")
-              else:
-                  delta = c - b
-                  lines.append(f"| {key} | {b:.4f} | {c:.4f} | {delta:+.4f} |")
-
-          os.makedirs("reports", exist_ok=True)
-          with open("reports/baseline_report.md", "w", encoding="utf-8") as f:
-              f.write("\n".join(lines))
-          PY
-
       - name: Create CML report (PR only)
         if: github.event_name == 'pull_request'
         env:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           F1_THRESHOLD: "0.50"
         run: |
+          pip install cml
           echo "## Model Metrics" > report.md
           echo "" >> report.md
           cat metrics.json >> report.md
@@ -106,12 +66,8 @@ jobs:
           echo "## Feature Importance" >> report.md
           cml publish data/models/feature_importance.png --md >> report.md
           echo "" >> report.md
-          cat reports/baseline_report.md >> report.md
-          echo "" >> report.md
-          echo "## Quality Gate" >> report.md
-          echo "" >> report.md
-          echo "- Required F1 threshold: ${F1_THRESHOLD}" >> report.md
-          echo "" >> report.md
+          echo "### Quality Gate" >> report.md
+          echo "Required F1 threshold: ${F1_THRESHOLD}" >> report.md
           cml comment create report.md
 
       - name: Upload model artifact (main only)
