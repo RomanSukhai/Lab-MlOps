@@ -1,26 +1,127 @@
-steps:
+name: Model CI (Train, Test, Report)
 
-- uses: actions/checkout@v4
+on:
+  push:
+  pull_request:
 
-- name: Set up Python
-  uses: actions/setup-python@v5
-  with:
-    python-version: "3.11"
+permissions:
+  contents: read
+  pull-requests: write
 
-- name: Install dependencies
-  run: |
-    pip install -r requirements.txt
+jobs:
+  ci:
+    runs-on: ubuntu-latest
 
-- name: Prepare data
-  run: |
-    python src/preprocessing.py data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv data/prepared
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-- name: Train model
-  run: |
-    python src/train.py data/prepared data/models
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
 
-- name: Run tests
-  env:
-    F1_THRESHOLD: "0.50"
-  run: |
-    pytest -q
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cml
+
+      - name: Lint (flake8)
+        run: |
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Format check (black)
+        run: |
+          black . --check
+
+      - name: Prepare data
+        run: |
+          python src/preprocessing.py data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv data/prepared
+
+      - name: Train model
+        run: |
+          python src/train.py data/prepared data/models
+
+      - name: Run tests (incl. Quality Gate)
+        env:
+          F1_THRESHOLD: "0.50"
+        run: |
+          pytest -q
+
+      - name: Create baseline comparison
+        if: github.event_name == 'pull_request'
+        run: |
+          python - <<'PY'
+          import json
+          import os
+
+          current = {}
+          baseline = {}
+
+          if os.path.exists("metrics.json"):
+              with open("metrics.json", "r", encoding="utf-8") as f:
+                  current = json.load(f)
+
+          if os.path.exists("baseline/metrics.json"):
+              with open("baseline/metrics.json", "r", encoding="utf-8") as f:
+                  baseline = json.load(f)
+
+          lines = []
+          lines.append("## Baseline comparison")
+          lines.append("")
+          lines.append("| Metric | Baseline | Current | Delta |")
+          lines.append("|---|---:|---:|---:|")
+
+          keys = sorted(set(current.keys()) | set(baseline.keys()))
+          for key in keys:
+              b = baseline.get(key)
+              c = current.get(key)
+              if b is None:
+                  lines.append(f"| {key} | - | {c:.4f} | - |")
+              elif c is None:
+                  lines.append(f"| {key} | {b:.4f} | - | - |")
+              else:
+                  delta = c - b
+                  lines.append(f"| {key} | {b:.4f} | {c:.4f} | {delta:+.4f} |")
+
+          os.makedirs("reports", exist_ok=True)
+          with open("reports/baseline_report.md", "w", encoding="utf-8") as f:
+              f.write("\n".join(lines))
+          PY
+
+      - name: Create CML report (PR only)
+        if: github.event_name == 'pull_request'
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          F1_THRESHOLD: "0.50"
+        run: |
+          echo "## Model Metrics" > report.md
+          echo "" >> report.md
+          cat metrics.json >> report.md
+          echo "" >> report.md
+          echo "## Confusion Matrix" >> report.md
+          cml publish data/models/confusion_matrix.png --md >> report.md
+          echo "" >> report.md
+          echo "## Feature Importance" >> report.md
+          cml publish data/models/feature_importance.png --md >> report.md
+          echo "" >> report.md
+          cat reports/baseline_report.md >> report.md
+          echo "" >> report.md
+          echo "## Quality Gate" >> report.md
+          echo "" >> report.md
+          echo "- Required F1 threshold: ${F1_THRESHOLD}" >> report.md
+          echo "" >> report.md
+          cml comment create report.md
+
+      - name: Upload model artifact (main only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: model
+          path: |
+            data/models/model.pkl
+            metrics.json
+            data/models/confusion_matrix.png
+            data/models/feature_importance.png
