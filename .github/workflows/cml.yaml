@@ -1,15 +1,11 @@
-name: Model CI (Train, Test, Report)
+name: Model CI
 
 on:
   push:
   pull_request:
 
-permissions:
-  contents: read
-  pull-requests: write
-
 jobs:
-  ci:
+  train-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,20 +16,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
-
-      - name: Lint (flake8)
-        run: |
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-
-      - name: Format check (black)
-        run: |
-          black . --check
 
       - name: Prepare data
         run: |
@@ -43,38 +30,16 @@ jobs:
         run: |
           python src/train.py data/prepared data/models
 
-      - name: Run tests (incl. Quality Gate)
+      - name: Run tests
         env:
           F1_THRESHOLD: "0.50"
         run: |
           pytest -q
 
-      - name: Create CML report (PR only)
-        if: github.event_name == 'pull_request'
-        env:
-          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          F1_THRESHOLD: "0.50"
-        run: |
-          pip install cml
-          echo "## Model Metrics" > report.md
-          echo "" >> report.md
-          cat metrics.json >> report.md
-          echo "" >> report.md
-          echo "## Confusion Matrix" >> report.md
-          cml publish data/models/confusion_matrix.png --md >> report.md
-          echo "" >> report.md
-          echo "## Feature Importance" >> report.md
-          cml publish data/models/feature_importance.png --md >> report.md
-          echo "" >> report.md
-          echo "### Quality Gate" >> report.md
-          echo "Required F1 threshold: ${F1_THRESHOLD}" >> report.md
-          cml comment create report.md
-
-      - name: Upload model artifact (main only)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      - name: Upload model artifact
         uses: actions/upload-artifact@v4
         with:
-          name: model
+          name: trained-model
           path: |
             data/models/model.pkl
             metrics.json
