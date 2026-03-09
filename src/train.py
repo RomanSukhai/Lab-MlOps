@@ -1,14 +1,16 @@
 import argparse
 import os
+import json
+import joblib
+import pandas as pd
 import mlflow
 import mlflow.sklearn
 import matplotlib.pyplot as plt
 import seaborn as sns
-import pandas as pd
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
-import joblib
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train RandomForest model")
@@ -27,6 +29,7 @@ def parse_args():
 
 
 def evaluate_model(model, X_test, y_test, output_dir):
+
     y_pred = model.predict(X_test)
 
     accuracy = accuracy_score(y_test, y_pred)
@@ -49,6 +52,7 @@ def evaluate_model(model, X_test, y_test, output_dir):
 
 
 def plot_feature_importance(model, feature_names, output_dir):
+
     importances = model.feature_importances_
     indices = importances.argsort()[-15:]
 
@@ -66,11 +70,13 @@ def plot_feature_importance(model, feature_names, output_dir):
 
 
 def train():
+
     args = parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # 🔹 Читаємо підготовлені дані
+    # ===== LOAD DATA =====
+
     train_df = pd.read_csv(os.path.join(args.input_dir, "train.csv"))
     test_df = pd.read_csv(os.path.join(args.input_dir, "test.csv"))
 
@@ -80,12 +86,16 @@ def train():
     X_test = test_df.drop("Churn", axis=1)
     y_test = test_df["Churn"]
 
+    # ===== MLFLOW =====
+
     mlflow.set_experiment(args.experiment_name)
 
     with mlflow.start_run():
 
         mlflow.set_tag("author", args.author)
         mlflow.set_tag("model_type", "RandomForest")
+
+        # ===== MODEL =====
 
         model = RandomForestClassifier(
             n_estimators=args.n_estimators,
@@ -94,14 +104,19 @@ def train():
         )
 
         model.fit(X_train, y_train)
+
         model_path = os.path.join(args.output_dir, "model.pkl")
         joblib.dump(model, model_path)
+
         # ===== TRAIN METRICS =====
+
         y_train_pred = model.predict(X_train)
+
         train_acc = accuracy_score(y_train, y_train_pred)
         train_f1 = f1_score(y_train, y_train_pred)
 
-        # ===== TEST METRICS + CONF MATRIX =====
+        # ===== TEST METRICS =====
+
         test_acc, test_f1, cm_path = evaluate_model(
             model,
             X_test,
@@ -110,13 +125,27 @@ def train():
         )
 
         # ===== FEATURE IMPORTANCE =====
+
         fi_path = plot_feature_importance(
             model,
             X_train.columns,
             args.output_dir
         )
 
-        # ===== LOGGING =====
+        # ===== SAVE METRICS JSON =====
+
+        metrics = {
+            "train_accuracy": float(train_acc),
+            "train_f1": float(train_f1),
+            "test_accuracy": float(test_acc),
+            "test_f1": float(test_f1)
+        }
+
+        with open("metrics.json", "w", encoding="utf-8") as f:
+            json.dump(metrics, f, ensure_ascii=False, indent=2)
+
+        # ===== MLFLOW LOGGING =====
+
         mlflow.log_param("n_estimators", args.n_estimators)
         mlflow.log_param("max_depth", args.max_depth)
 
@@ -127,8 +156,10 @@ def train():
 
         mlflow.sklearn.log_model(model, "model")
 
+        mlflow.log_artifact(model_path)
         mlflow.log_artifact(cm_path)
         mlflow.log_artifact(fi_path)
+        mlflow.log_artifact("metrics.json")
 
         print("Training finished.")
         print(f"Train Accuracy: {train_acc:.3f}")
