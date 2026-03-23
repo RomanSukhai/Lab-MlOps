@@ -30,5 +30,3 @@ def test_quality_gate_f1():
 
     f1 = float(metrics["test_f1"])
     assert f1 >= threshold, f"Quality Gate not passed: f1={f1} < {threshold}"
-
-    
