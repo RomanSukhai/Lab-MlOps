@@ -2,11 +2,14 @@ from datetime import datetime
 import json
 import os
 
-from airflow import DAG
-from airflow.providers.standard.operators.bash import BashOperator
-from airflow.providers.standard.operators.python import BranchPythonOperator
-from airflow.providers.standard.operators.empty import EmptyOperator
-
+try:
+    from airflow.providers.standard.operators.bash import BashOperator
+    from airflow.providers.standard.operators.python import BranchPythonOperator
+    from airflow.providers.standard.operators.empty import EmptyOperator
+except ImportError:
+    from airflow.operators.bash import BashOperator
+    from airflow.operators.python import BranchPythonOperator
+    from airflow.operators.empty import EmptyOperator
 PROJECT_DIR = "/opt/airflow/project"
 METRICS_PATH = os.path.join(PROJECT_DIR, "metrics.json")
 
