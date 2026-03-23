@@ -1,13 +1,14 @@
 schema: '2.0'
 stages:
   prepare:
-    cmd: ./venv/bin/python src/preprocessing.py 
+    cmd: python src/preprocessing.py 
       data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv data/prepared
     deps:
     - path: data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
       hash: md5
       md5: 0f9de68e012bd3aed5fa7cdc9fc421af
       size: 977501
+      isexec: true
     - path: src/preprocessing.py
       hash: md5
       md5: 89c3238483187a2f7b4c81850ed5e012
