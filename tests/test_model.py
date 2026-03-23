@@ -1,11 +1,12 @@
 import os
-import pandas as pd
 import json
+import pandas as pd
 
 
 def test_data_schema_basic():
     data_path = "data/prepared/train.csv"
     assert os.path.exists(data_path), f"Data not found: {data_path}"
+
     df = pd.read_csv(data_path)
     required_cols = {"Churn"}
     missing = required_cols - set(df.columns)
@@ -28,5 +29,6 @@ def test_quality_gate_f1():
         metrics = json.load(f)
 
     f1 = float(metrics["test_f1"])
-
     assert f1 >= threshold, f"Quality Gate not passed: f1={f1} < {threshold}"
+
+    

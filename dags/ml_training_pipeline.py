@@ -86,3 +86,4 @@ with DAG(
     check_data >> prepare_data >> train_model >> optimize_model >> branch_decision
     branch_decision >> register_model >> end
     branch_decision >> skip_registration >> end
+    
