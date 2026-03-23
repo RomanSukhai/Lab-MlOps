@@ -2,6 +2,7 @@ from datetime import datetime
 import json
 import os
 
+from airflow import DAG
 try:
     from airflow.providers.standard.operators.bash import BashOperator
     from airflow.providers.standard.operators.python import BranchPythonOperator
