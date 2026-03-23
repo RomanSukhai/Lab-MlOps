@@ -64,15 +64,14 @@ with DAG(
         task_id="register_model",
         bash_command=(
             f"cd {PROJECT_DIR} && "
-            "python -c \""
-            "import mlflow; "
+            "python -c \"import mlflow; "
             "mlflow.set_tracking_uri('file:./mlruns'); "
             "mlflow.set_experiment('lab-mlops'); "
-            "with mlflow.start_run(): "
-            "    mlflow.log_artifact('data/models/model.pkl'); "
-            "    mlflow.log_artifact('data/models/confusion_matrix.png'); "
-            "    mlflow.log_artifact('metrics.json')"
-            "\""
+            "run = mlflow.start_run(); "
+            "mlflow.log_artifact('data/models/model.pkl'); "
+            "mlflow.log_artifact('data/models/confusion_matrix.png'); "
+            "mlflow.log_artifact('metrics.json'); "
+            "mlflow.end_run()\""
         ),
     )
 

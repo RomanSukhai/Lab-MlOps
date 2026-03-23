@@ -20,7 +20,7 @@ stages:
       size: 1176265
       nfiles: 2
   train:
-    cmd: ./venv/bin/python src/train.py data/prepared data/models
+    cmd: python src/train.py data/prepared data/models
     deps:
     - path: data/prepared
       hash: md5
@@ -29,8 +29,8 @@ stages:
       nfiles: 2
     - path: src/train.py
       hash: md5
-      md5: 9c2e33c786aabf3f18b97513a295536d
-      size: 4041
+      md5: cfb1c5ecc69efd8400e93209547eca0e
+      size: 4538
     outs:
     - path: data/models
       hash: md5
@@ -38,7 +38,7 @@ stages:
       size: 1899945
       nfiles: 3
   optimize:
-    cmd: ./venv/bin/python src/optimize.py
+    cmd: python src/optimize.py
     deps:
     - path: data/prepared
       hash: md5
