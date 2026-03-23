@@ -3,9 +3,9 @@ __pycache__/
 venv/
 .env
 
-data/*
+data/**
 !data/raw/
-!data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv
+!data/raw/**
 mlruns/
 
 .ipynb_checkpoints/

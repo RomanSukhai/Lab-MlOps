@@ -4,6 +4,7 @@ services:
   airflow:
     image: apache/airflow:2.9.3
     container_name: airflow_lab
+    user: "0:0"
     ports:
       - "8080:8080"
     volumes:
@@ -13,8 +14,11 @@ services:
     environment:
       AIRFLOW__CORE__LOAD_EXAMPLES: "False"
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
-    command: bash -c "
-      pip install --no-cache-dir -r requirements.txt &&
+    command: >
+      bash -c "
+      python -m pip install --upgrade pip &&
+      python -m pip install --no-cache-dir -r requirements.txt &&
+      python -m pip show dvc &&
       airflow db migrate &&
       airflow users create --username admin --password admin --firstname admin --lastname admin --role Admin --email admin@example.com || true &&
       airflow standalone

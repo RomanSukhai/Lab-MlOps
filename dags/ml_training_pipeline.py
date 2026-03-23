@@ -45,12 +45,12 @@ with DAG(
 
     prepare_data = BashOperator(
         task_id="prepare_data",
-        bash_command=f"cd {PROJECT_DIR} && dvc repro prepare",
+        bash_command=f"cd {PROJECT_DIR} && rm -rf data/prepared && dvc repro prepare",
     )
 
     train_model = BashOperator(
         task_id="train_model",
-        bash_command=f"cd {PROJECT_DIR} && dvc repro train",
+        bash_command=f"cd {PROJECT_DIR} && rm -rf data/models && dvc repro train",
     )
 
     optimize_model = BashOperator(
