@@ -3,10 +3,9 @@ import json
 import os
 
 from airflow import DAG
-from airflow.operators.bash import BashOperator
-from airflow.operators.python import BranchPythonOperator
-from airflow.operators.empty import EmptyOperator
-
+from airflow.providers.standard.operators.bash import BashOperator
+from airflow.providers.standard.operators.python import BranchPythonOperator
+from airflow.providers.standard.operators.empty import EmptyOperator
 
 PROJECT_DIR = "/opt/airflow/project"
 METRICS_PATH = os.path.join(PROJECT_DIR, "metrics.json")
@@ -30,7 +29,7 @@ def choose_branch():
 with DAG(
     dag_id="ml_training_pipeline",
     start_date=datetime(2024, 1, 1),
-    schedule_interval=None,
+    schedule=None,
     catchup=False,
     tags=["mlops", "dvc", "mlflow"],
 ) as dag:
